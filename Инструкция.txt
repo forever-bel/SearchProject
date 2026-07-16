@@ -1,0 +1,161 @@
+Инструкция по запуску сервисов и наполнению базы данных
+
+1. Требования к окружению
+
+.NET SDK	9.0 или выше
+Docker	        24.0 или выше (для запуска Qdrant)
+Браузер	        Для Swagger UI
+
+2. Установка и настройка
+
+2.1. Клонирование репозитория
+
+bash
+git clone <ссылка_на_репозиторий>
+cd SearchProject
+
+2.2. Восстановление зависимостей
+
+bash
+dotnet restore
+
+2.3. Настройка конфигурации
+
+В файле appsettings.json укажите необходимые параметры:
+
+json
+{
+  "VkSettings": {
+    "AccessToken": "ваш_токен_доступа_VK",
+    "GroupId": "ID_группы_для_парсинга",
+    "ApiVersion": "5.131"
+  },
+  "GigaChatSettings": {
+    "ClientId": "ваш_client_id",
+    "ClientSecret": "ваш_client_secret",
+    "Scope": "GIGACHAT_API_PERS"
+  },
+  "QdrantSettings": {
+    "Host": "localhost",
+    "Port": 6333,
+    "CollectionName": "my_search"
+  },
+  "EmbedderSettings": {
+    "ModelPath": "Models/model.onnx"
+  }
+}
+
+3. Запуск сервисов
+
+3.1. Запуск Qdrant
+
+Вариант А: Через Docker
+
+bash
+docker run -p 6333:6333 qdrant/qdrant
+
+Вариант Б: Без Docker
+
+Скачать qdrant.exe с GitHub Releases
+Запустить:
+
+bash
+./qdrant.exe
+
+Проверка: Открыть в браузере http://localhost:6333/dashboard
+
+3.2. Запуск приложения
+
+bash
+dotnet run --project SearchProject.API
+
+4. Наполнение базы данных
+
+4.1. Через Swagger UI (рекомендуемый способ)
+
+Открыть в браузере: http://localhost:5014/swagger/index.html
+Выполнить последовательно:
+
+Шаг	Эндпоинт	Действие
+1	POST /api/parse	Парсинг постов из VK
+2	POST /api/index	Индексация в Qdrant
+
+4.2. Через curl (альтернативный способ)
+
+bash
+# Парсинг
+curl -X POST http://localhost:5014/api/parse
+
+# Индексация
+curl -X POST http://localhost:5014/api/index
+
+5. Проверка работы системы
+
+5.1. Поиск
+
+Запрос:
+
+bash
+curl -X POST http://localhost:5014/api/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Запрос", "topK": 5}'
+
+Ожидаемый ответ:
+
+json
+{
+  "results": [
+    {
+      "score": 0.87,
+      "text": "Текст поста...",
+      "source": "2186404",
+      "date": "1758686463"
+    }
+  ]
+}
+
+5.2. RAG-ответ
+
+Запрос:
+
+bash
+curl -X POST http://localhost:5014/api/ask \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Запром"}'
+
+Ожидаемый ответ:
+
+json
+{
+  "answer": "RAG-ответ",
+  "sources": [...]
+}
+
+6. Управление коллекцией Qdrant
+
+Действие	               Команда
+Статус коллекции	       GET http://localhost:6333/collections/my_search
+Удаление коллекции	       DELETE http://localhost:6333/collections/my_search
+Принудительная индексация      PATCH http://localhost:6333/collections/my_search
+
+Пример принудительной очистки (PowerShell):
+
+powershell
+Invoke-RestMethod -Method DELETE -Uri "http://localhost:6333/collections/my_search"
+
+7. Возможные проблемы и решения
+
+Проблема	                 Решение
+Qdrant не запускается	         Проверить Docker: docker ps
+Ошибка подключения к Qdrant      Проверить порт 6333: netstat -ano | findstr 6333
+Медленный поиск	                 Проверить indexed_vectors_count в статусе коллекции
+Токен VK не работает	         Получить новый токен через VK OAuth
+GigaChat не отвечает	         Проверить ClientId и ClientSecret
+
+8. Завершение работы
+
+Остановить приложение: Ctrl+C
+
+Остановить Qdrant: Ctrl+C в окне с qdrant.exe или docker stop
+
+Данные сохраняются автоматически в Qdrant и файле data/posts.json
