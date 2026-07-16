@@ -45,6 +45,14 @@ json
   }
 }
 
+2.4. Загрузка ONNX-модели
+
+Скачать модель DistilUSE:
+https://huggingface.co/lorenpe2/distiluse-base-multilingual-cased-v2
+
+Файл model.onnx поместить в папку:
+SearchProject.API/Models/model.onnx
+
 3. Запуск сервисов
 
 3.1. Запуск Qdrant
