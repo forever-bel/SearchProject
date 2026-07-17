@@ -48,25 +48,21 @@ public class EmbedderService : IDisposable
     {
         try
         {
-            // ✅ Токенизация (только 2 входа для DistilUSE)
             var (inputIds, attentionMask) = Tokenize(texts);
 
             var inputs = new List<NamedOnnxValue>
             {
                 NamedOnnxValue.CreateFromTensor("input_ids", inputIds),
                 NamedOnnxValue.CreateFromTensor("attention_mask", attentionMask)
-                // ❌ token_type_ids НЕ добавляем!
             };
 
             var results = _session.Run(inputs);
             var output = results.First(x => x.Name == _outputName);
             var outputTensor = output.AsTensor<float>();
 
-            // ✅ Извлекаем эмбеддинги
             var flatArray = outputTensor.ToArray();
             var batchSize = texts.Length;
 
-            // ✅ Определяем размерность из тензора
             var dims = outputTensor.Dimensions;
             int dim;
             if (dims.Length >= 2)
@@ -133,7 +129,6 @@ public class EmbedderService : IDisposable
         return embeddings;
     }
 
-    // ✅ Токенизация только с 2 выходами
     private (DenseTensor<long> InputIds, DenseTensor<long> AttentionMask)
         Tokenize(string[] texts)
     {
@@ -148,12 +143,10 @@ public class EmbedderService : IDisposable
             var tokens = texts[i].Split(' ').Take(maxLength - 2);
             int j = 0;
 
-            // [CLS]
             inputIds[i, j] = 101;
             attentionMask[i, j] = 1;
             j++;
 
-            // Токены
             foreach (var token in tokens)
             {
                 inputIds[i, j] = Math.Abs(token.GetHashCode()) % 30000 + 100;
@@ -161,7 +154,6 @@ public class EmbedderService : IDisposable
                 j++;
             }
 
-            // [SEP]
             if (j < maxLength)
             {
                 inputIds[i, j] = 102;
